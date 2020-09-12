@@ -8,13 +8,14 @@ import (
 )
 
 var clients = make(map[*websocket.Conn]bool) // connected clients
-var broadcast = make(chan Message)           // broadcast channel
+var broadcast = make(chan message)           // broadcast channel
 // Configure the upgrader
 var upgrader = websocket.Upgrader{}
 
-type Message struct {
+type message struct {
 	Username string `json:"username"`
 	Message  string `json:"message"`
+	Image    string `json:"image,omitempty""`
 }
 
 func main() {
@@ -27,8 +28,7 @@ func main() {
 
 	port := 9001
 	log.Infof("http server started on %d", port)
-	err := http.ListenAndServe(fmt.Sprintf(":%d", port), nil)
-	if err != nil {
+	if err := http.ListenAndServe(fmt.Sprintf(":%d", port), nil); err != nil {
 		log.Fatal("ListenAndServe: ", err)
 	}
 }
@@ -46,10 +46,9 @@ func handleConnections(w http.ResponseWriter, r *http.Request) {
 	clients[ws] = true
 
 	for {
-		var msg Message
+		var msg message
 		// Read in a new message as JSON and map it to a Message object
-		err := ws.ReadJSON(&msg)
-		if err != nil {
+		if err := ws.ReadJSON(&msg); err != nil {
 			log.WithError(err).Errorf("error reading JSON")
 			delete(clients, ws)
 			break
@@ -65,8 +64,7 @@ func handleMessages() {
 		msg := <-broadcast
 		// Send it out to every client that is currently connected
 		for client := range clients {
-			err := client.WriteJSON(msg)
-			if err != nil {
+			if err := client.WriteJSON(msg); err != nil {
 				log.WithError(err).Errorf("error writing JSON")
 				client.Close()
 				delete(clients, client)

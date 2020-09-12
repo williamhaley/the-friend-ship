@@ -1,38 +1,64 @@
-new Vue({
+const store = {
+  state: {
+    draftImage: null,
+  },
+  setImage (image) {
+    this.state.draftImage = image
+  },
+  clearDraftImage() {
+    this.state.draftImage = null;
+  },
+};
+
+const app = new Vue({
   el: '#app',
 
   data: {
     appName: 'The Friend Ship',
-
-    ws: null, // Our websocket
-    newMsg: '', // Holds new messages to be sent to the server
-    chatContent: '', // A running list of chat messages displayed on the screen
-    username: null, // Our username
+    ws: null,
+    draftMessage: '',
+    chatMessages: [],
+    username: null,
     joined: false,
+
+    sharedState: store.state,
   },
 
   created: function() {
     this.ws = new WebSocket(`ws://${window.location.host}/ws`);
     this.ws.addEventListener('message', (event) => {
-      const msg = JSON.parse(event.data);
-      this.chatContent += `<div class="chip">${msg.username}</div>${msg.message}<br/>`;
+      const { username, message, image } = JSON.parse(event.data);
+
+      console.log(image);
+
+      this.chatMessages.push({ username, message, image });
 
       const element = document.getElementById('chat-messages');
       element.scrollTop = element.scrollHeight; // Auto scroll to the bottom
     });
   },
 
+  computed: {
+    hasImage: function () {
+      return !!this.sharedState.draftImage;
+    },
+  },
+
   methods: {
     send: function () {
-      if (this.newMsg != '') {
-        this.ws.send(
-          JSON.stringify({
-            username: this.username,
-            message: $('<p>').html(this.newMsg).text() // Strip out html
-          }
-        ));
-        this.newMsg = ''; // Reset newMsg
+      if (!this.draftMessage && !this.sharedState.draftImage) {
+        return;
       }
+
+      this.ws.send(
+        JSON.stringify({
+          username: this.username,
+          message: `${this.draftMessage}`,
+          image: this.sharedState.draftImage || '',
+        }),
+      );
+      this.draftMessage = '';
+      store.clearDraftImage();
     },
 
     join: function () {
@@ -40,7 +66,7 @@ new Vue({
         Materialize.toast('You must choose a username', 2000);
         return
       }
-      this.username = $('<p>').html(this.username).text();
+      this.username = `${this.username}`;
       this.joined = true;
     },
   }
