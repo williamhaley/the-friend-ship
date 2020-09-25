@@ -5,6 +5,7 @@ import (
 	"github.com/gorilla/websocket"
 	log "github.com/sirupsen/logrus"
 	"net/http"
+	"os"
 )
 
 var clients = make(map[*websocket.Conn]bool) // connected clients
@@ -15,7 +16,7 @@ var upgrader = websocket.Upgrader{}
 type message struct {
 	Username string `json:"username"`
 	Message  string `json:"message"`
-	Image    string `json:"image,omitempty""`
+	Image    string `json:"image,omitempty"`
 }
 
 func main() {
@@ -26,9 +27,14 @@ func main() {
 
 	go handleMessages()
 
-	port := 9001
-	log.Infof("http server started on %d", port)
-	if err := http.ListenAndServe(fmt.Sprintf(":%d", port), nil); err != nil {
+	port := os.Getenv("PORT")
+	if port == "" {
+		port = "8080"
+		log.Printf("Defaulting to port %s", port)
+	}
+
+	log.Infof("http server started on %s", port)
+	if err := http.ListenAndServe(fmt.Sprintf(":%s", port), nil); err != nil {
 		log.Fatal("ListenAndServe: ", err)
 	}
 }
